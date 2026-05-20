@@ -24,6 +24,7 @@ public class UiReferences
     public TMP_Dropdown prefabDropdown;
     public Toggle randomSeedToggle;
     public Toggle ruleUnderwaterToggle;
+    public Toggle ruleAlignToSurfaceNormalToggle;
     public Slider sandSlider;
     public Slider grassSlider;
     public Slider rockSlider;
@@ -67,6 +68,7 @@ public class TerrainUIController : MonoBehaviour
         PopulateBiomeDropdown();
         ui.ruleSelectDropdown.onValueChanged.AddListener(LoadRuleIntoUI);
         ui.ruleUnderwaterToggle.onValueChanged.AddListener((val) => SaveRuleFromUI());
+        ui.ruleAlignToSurfaceNormalToggle.onValueChanged.AddListener((val) => SaveRuleFromUI());
         ui.biomeDropdown.onValueChanged.AddListener(LoadBiomeIntoUI);
         ui.addRuleButton.onClick.AddListener(CreateNewRule);
         ui.saveBiomeButton.onClick.AddListener(SaveCurrentAsBiome);
@@ -94,17 +96,12 @@ public class TerrainUIController : MonoBehaviour
     }
     void OnSliderChanged(int changedIndex, float newValue)
     {
-        if (isUpdatingSliders) return;
-
-        isUpdatingSliders = true;
-
         float oldValue = matValues[changedIndex];
         float delta = newValue - oldValue;
-
         float sumOthers = 0f;
         for (int i = 0; i < 3; i++) if (i != changedIndex) sumOthers += matValues[i];
-
         matValues[changedIndex] = newValue;
+        float total = matValues[0] + matValues[1] + matValues[2];
 
         for (int i = 0; i < 3; i++)
         {
@@ -119,38 +116,41 @@ public class TerrainUIController : MonoBehaviour
             }
         }
 
-        float total = matValues[0] + matValues[1] + matValues[2];
         if (total > 0)
         {
             for (int i = 0; i < 3; i++) matValues[i] /= total;
         }
 
-        ui.sandSlider.value = matValues[0];
-        ui.grassSlider.value = matValues[1];
-        ui.rockSlider.value = matValues[2];
+        if (biomePresets.Count > 0 && ui.biomeDropdown.options.Count > 0)
+        {
+            BiomePreset activeBiome = biomePresets[ui.biomeDropdown.value];
+            activeBiome.sandPercent = matValues[0];
+            activeBiome.grassPercent = matValues[1];
+            activeBiome.rockPercent = matValues[2];
+        }
 
-        isUpdatingSliders = false;
+        ui.sandSlider.SetValueWithoutNotify(matValues[0]);
+        ui.grassSlider.SetValueWithoutNotify(matValues[1]);
+        ui.rockSlider.SetValueWithoutNotify(matValues[2]);
     }
     void SaveRuleFromUI()
     {
-        if (isUpdatingSliders || terrainGenerator.scatterRules.Length == 0) return;
-
         ScatterRule rule = terrainGenerator.scatterRules[currentRuleIndex];
-        rule.allowUnderwater = ui.ruleUnderwaterToggle.isOn;
         rule.spawnProbability = ui.probSlider.value;
         rule.minHeight = ui.minHeightSlider.value;
         rule.maxHeight = ui.maxHeightSlider.value;
         rule.maxSteepness = ui.maxSteepnessSlider.value;
         rule.prefab = availablePrefabs[ui.prefabDropdown.value];
+        rule.allowUnderwater = ui.ruleUnderwaterToggle.isOn;
+        rule.alignToSurfaceNormal = ui.ruleAlignToSurfaceNormalToggle.isOn;
     }
     void LoadRuleIntoUI(int index)
     {
-        if (terrainGenerator.scatterRules.Length == 0) return;
-
         currentRuleIndex = index;
         ScatterRule rule = terrainGenerator.scatterRules[index];
 
-        ui.ruleUnderwaterToggle.isOn = rule.allowUnderwater;
+        ui.ruleUnderwaterToggle.SetIsOnWithoutNotify(rule.allowUnderwater);
+        ui.ruleAlignToSurfaceNormalToggle.SetIsOnWithoutNotify(rule.alignToSurfaceNormal);
         ui.probSlider.SetValueWithoutNotify(rule.spawnProbability);
         ui.minHeightSlider.SetValueWithoutNotify(rule.minHeight);
         ui.maxHeightSlider.SetValueWithoutNotify(rule.maxHeight);
@@ -186,7 +186,6 @@ public class TerrainUIController : MonoBehaviour
 
         currentRules.Add(newRule);
         terrainGenerator.scatterRules = currentRules.ToArray();
-
         RefreshRuleDropdown();
         ui.ruleSelectDropdown.value = currentRules.Count - 1;
     }
@@ -197,7 +196,6 @@ public class TerrainUIController : MonoBehaviour
         newPreset.sandPercent = matValues[0];
         newPreset.grassPercent = matValues[1];
         newPreset.rockPercent = matValues[2];
-
         newPreset.curve = biomePresets[ui.biomeDropdown.value].curve;
 
         biomePresets.Add(newPreset);
@@ -225,20 +223,17 @@ public class TerrainUIController : MonoBehaviour
         Gradient dynamicGradient = new Gradient();
         GradientColorKey[] colorKeys = new GradientColorKey[6];
         GradientAlphaKey[] alphaKeys = new GradientAlphaKey[2] { new GradientAlphaKey(1, 0), new GradientAlphaKey(1, 1) };
-
         float endSand = matValues[0];
         float endGrass = matValues[0] + matValues[1];
-
         colorKeys[0] = new GradientColorKey(Color.red, 0f);
         colorKeys[1] = new GradientColorKey(Color.red, endSand);
         colorKeys[2] = new GradientColorKey(Color.green, endSand + 0.001f);
         colorKeys[3] = new GradientColorKey(Color.green, endGrass);
         colorKeys[4] = new GradientColorKey(Color.blue, endGrass + 0.001f);
         colorKeys[5] = new GradientColorKey(Color.blue, 1f);
-
         dynamicGradient.SetKeys(colorKeys, alphaKeys);
         terrainGenerator.heightColors = dynamicGradient;
-
+        
         terrainGenerator.GenerateTerrain();
     }
 }

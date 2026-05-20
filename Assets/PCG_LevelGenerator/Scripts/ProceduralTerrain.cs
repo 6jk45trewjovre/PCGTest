@@ -8,6 +8,7 @@ public class ScatterRule
     public string ruleName;
     public GameObject prefab;
     public bool allowUnderwater;
+    public bool alignToSurfaceNormal;
     [Range(0f, 1f)] public float spawnProbability = 0.05f;
     public float minHeight = 0f;
     public float maxHeight = 50f;
@@ -280,7 +281,16 @@ public class ProceduralTerrain : MonoBehaviour
                     Vector3 spawnPos = new Vector3(vertexPos.x + offsetX, vertexPos.y, vertexPos.z + offsetZ);
                     GameObject spawnedObj = Instantiate(rule.prefab, spawnPos, Quaternion.identity);
                     spawnedObj.transform.parent = scatterParent;
-                    spawnedObj.transform.rotation = Quaternion.Euler(0, (float)prng.NextDouble() * 360f, 0);
+                    Quaternion randomYaw = Quaternion.Euler(0, (float)prng.NextDouble() * 360f, 0);
+                    if (rule.alignToSurfaceNormal)
+                    {
+                        Quaternion slopeAlignment = Quaternion.FromToRotation(Vector3.up, normals[i]);
+                        spawnedObj.transform.rotation = slopeAlignment * randomYaw;
+                    }
+                    else
+                    {
+                        spawnedObj.transform.rotation = randomYaw;
+                    }
                     break;
                 }
             }
