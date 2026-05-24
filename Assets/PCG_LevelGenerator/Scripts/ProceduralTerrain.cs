@@ -14,6 +14,7 @@ public class ScatterRule
     public float maxHeight = 50f;
     public float maxSteepness = 30f;
 }
+
 [System.Serializable]
 public class BotSettings
 {
@@ -31,8 +32,8 @@ public class BotSettings
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class ProceduralTerrain : MonoBehaviour
 {
-    public int width = 50;
-    public int depth = 50;
+    public int width = 200;
+    public int lenght = 200;
     public bool generateIslands = true;
     public bool generateWater = true;
     public Transform waterPlane;
@@ -44,7 +45,7 @@ public class ProceduralTerrain : MonoBehaviour
     public Gradient heightColors;
     private Color[] colors; 
     public float noiseScale = 10f;
-    public float heightMultiplier = 10f;
+    public float altitudeMultiplier = 10f;
     public AnimationCurve heightCurve;
     public int octaves = 4;
     public float persistence = 0.5f;
@@ -72,9 +73,9 @@ public class ProceduralTerrain : MonoBehaviour
     }
     public void GenerateTerrain()
     {
-        vertices = new Vector3[(width + 1) * (depth + 1)];
-        uvs = new Vector2[(width + 1) * (depth + 1)]; 
-        colors = new Color[(width + 1) * (depth + 1)]; 
+        vertices = new Vector3[(width + 1) * (lenght + 1)];
+        uvs = new Vector2[(width + 1) * (lenght + 1)]; 
+        colors = new Color[(width + 1) * (lenght + 1)]; 
 
 
         System.Random prng = new System.Random(seed);
@@ -82,7 +83,7 @@ public class ProceduralTerrain : MonoBehaviour
         float offsetZ = prng.Next(-100000, 100000) + offset.y;
 
         int i = 0;
-        for (int z = 0; z <= depth; z++)
+        for (int z = 0; z <= lenght; z++)
         {
             for (int x = 0; x <= width; x++)
             {
@@ -101,7 +102,7 @@ public class ProceduralTerrain : MonoBehaviour
                         float sampleX = (x + offsetX) / noiseScale;
                         float sampleZ = (z + offsetZ) / noiseScale;
                         float rawNoise = GetFractalNoise(sampleX, sampleZ, octaves, persistence, lacunarity);
-                        float terrainHeight = heightCurve.Evaluate(rawNoise) * heightMultiplier;
+                        float terrainHeight = heightCurve.Evaluate(rawNoise) * altitudeMultiplier;
                         float beachEase = Mathf.Clamp01(shoreDistance * 4f);
                         finalHeight = terrainHeight * beachEase;
                     }
@@ -120,24 +121,24 @@ public class ProceduralTerrain : MonoBehaviour
                     float sampleX = (x + offsetX) / noiseScale;
                     float sampleZ = (z + offsetZ) / noiseScale;
                     float rawNoise = GetFractalNoise(sampleX, sampleZ, octaves, persistence, lacunarity);
-                    finalHeight = heightCurve.Evaluate(rawNoise) * heightMultiplier;
+                    finalHeight = heightCurve.Evaluate(rawNoise) * altitudeMultiplier;
                 }
 
                 vertices[i] = new Vector3(x, finalHeight, z);
-                uvs[i] = new Vector2((float)x / width, (float)z / depth);
+                uvs[i] = new Vector2((float)x / width, (float)z / lenght);
 
                 float heightPercentage;
 
 
-                if (finalHeight <= seaLevel)
+                if (generateWater && finalHeight <= seaLevel)
                 {
                     heightPercentage = 0f;
                 }
                 else
                 {
-
-                    float validMaxHeight = Mathf.Max(seaLevel + 0.1f, heightMultiplier);
-                    heightPercentage = Mathf.InverseLerp(seaLevel, validMaxHeight, finalHeight);
+                    float minHeight = generateWater ? seaLevel : 0f;
+                    float validMaxHeight = Mathf.Max(seaLevel + 0.1f, altitudeMultiplier);
+                    heightPercentage = Mathf.InverseLerp(minHeight, validMaxHeight, finalHeight);
                 }
 
                 colors[i] = heightColors.Evaluate(heightPercentage);
@@ -157,12 +158,12 @@ public class ProceduralTerrain : MonoBehaviour
     }
     private void GenerateTriangles()
     {
-        triangles = new int[width * depth * 6];
+        triangles = new int[width * lenght * 6];
 
         int vert = 0; 
         int tris = 0; 
 
-        for (int z = 0; z < depth; z++)
+        for (int z = 0; z < lenght; z++)
         {
             for (int x = 0; x < width; x++)
             {
@@ -177,16 +178,6 @@ public class ProceduralTerrain : MonoBehaviour
                 tris += 6;
             }
             vert++;
-        }
-    }
-    void OnValidate()
-    {
-        if (width < 1) width = 1;
-        if (depth < 1) depth = 1;
-        if (noiseScale <= 0f) noiseScale = 0.001f;
-        if (mesh != null)
-        {
-            GenerateTerrain();
         }
     }
     private float GetNoise(float x, float z)
@@ -230,8 +221,8 @@ public class ProceduralTerrain : MonoBehaviour
             waterPlane.gameObject.SetActive(true);
             if (waterPlane != null)
             {
-                waterPlane.localScale = new Vector3(width / 10f, 1f, depth / 10f);
-                waterPlane.position = new Vector3(width / 2f, seaLevel, depth / 2f);
+                waterPlane.localScale = new Vector3(width / 10f, 1f, lenght / 10f);
+                waterPlane.position = new Vector3(width / 2f, seaLevel, lenght / 2f);
             }
         }
         else
@@ -264,7 +255,7 @@ public class ProceduralTerrain : MonoBehaviour
             foreach (ScatterRule rule in scatterRules)
             {
 
-                if (!rule.allowUnderwater && vertexPos.y <= seaLevel)
+                if (generateWater && !rule.allowUnderwater && vertexPos.y <= seaLevel)
                 {
                     continue;
                 }
@@ -303,12 +294,12 @@ public class ProceduralTerrain : MonoBehaviour
         botParent = new GameObject("AI Bots").transform;
         botParent.transform.parent = this.transform;
         GameObject deepWaterBlocker = null;
-        if (!botSettings.canWalkUnderwater)
+        if (generateWater && !botSettings.canWalkUnderwater)
         {
             deepWaterBlocker = new GameObject("DeepWaterBlocker");
-            deepWaterBlocker.transform.position = new Vector3(width / 2f, seaLevel - 51f, depth / 2f);
+            deepWaterBlocker.transform.position = new Vector3(width / 2f, seaLevel - 51f, lenght / 2f);
             BoxCollider box = deepWaterBlocker.AddComponent<BoxCollider>();
-            box.size = new Vector3(width + 50f, 100f, depth + 50f);
+            box.size = new Vector3(width + 50f, 100f, lenght + 50f);
             NavMeshModifier mod = deepWaterBlocker.AddComponent<NavMeshModifier>();
             mod.overrideArea = true;
             mod.area = 1;
@@ -329,7 +320,7 @@ public class ProceduralTerrain : MonoBehaviour
                 {
                     int randomIndex = prng.Next(0, vertices.Length);
                     Vector3 testPos = vertices[randomIndex];
-                    if (!botSettings.canWalkUnderwater && testPos.y < seaLevel - 1f)
+                    if (generateWater && !botSettings.canWalkUnderwater && testPos.y < seaLevel - 1f)
                         continue;
                     NavMeshHit hit;
                     if (NavMesh.SamplePosition(testPos, out hit, 2.0f, NavMesh.AllAreas))
@@ -357,7 +348,7 @@ public class ProceduralTerrain : MonoBehaviour
     }
     private void GenerateWater()
     {
-        waterPlane.transform.localScale = new Vector3(width / 10f, 1f, depth / 10f);
-        waterPlane.transform.position = new Vector3(width / 2f, seaLevel, depth / 2f);
+        waterPlane.transform.localScale = new Vector3(width / 10f, 1f, lenght / 10f);
+        waterPlane.transform.position = new Vector3(width / 2f, seaLevel, lenght / 2f);
     }
 }
