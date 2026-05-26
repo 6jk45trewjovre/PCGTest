@@ -33,7 +33,7 @@ public class BotSettings
 public class ProceduralTerrain : MonoBehaviour
 {
     public int width = 200;
-    public int lenght = 200;
+    public int length = 200;
     public bool generateIslands = true;
     public bool generateWater = true;
     public Transform waterPlane;
@@ -73,17 +73,26 @@ public class ProceduralTerrain : MonoBehaviour
     }
     public void GenerateTerrain()
     {
-        vertices = new Vector3[(width + 1) * (lenght + 1)];
-        uvs = new Vector2[(width + 1) * (lenght + 1)]; 
-        colors = new Color[(width + 1) * (lenght + 1)]; 
+        int vertexCount = (width + 1) * (length + 1);
+        if (vertices == null || vertices.Length != vertexCount)
+        {
+            vertices = new Vector3[vertexCount];
+            uvs = new Vector2[vertexCount];
+            colors = new Color[vertexCount];
+        }
 
+        vertices = new Vector3[(width + 1) * (length + 1)];
+        uvs = new Vector2[(width + 1) * (length + 1)]; 
+        colors = new Color[(width + 1) * (length + 1)]; 
 
         System.Random prng = new System.Random(seed);
         float offsetX = prng.Next(-100000, 100000) + offset.x;
         float offsetZ = prng.Next(-100000, 100000) + offset.y;
 
         int i = 0;
-        for (int z = 0; z <= lenght; z++)
+        float invWidth = 1f / width;
+        float invLength = 1f / length;
+        for (int z = 0; z <= length; z++)
         {
             for (int x = 0; x <= width; x++)
             {
@@ -108,11 +117,7 @@ public class ProceduralTerrain : MonoBehaviour
                     }
                     else
                     {
-
-                        finalHeight = shoreDistance * maxOceanDepth * 2f;
-
-
-                        finalHeight = Mathf.Max(finalHeight, -maxOceanDepth);
+                        finalHeight = Mathf.Max(shoreDistance * maxOceanDepth * 2f, -maxOceanDepth);
                     }
                 }
                 else
@@ -125,10 +130,8 @@ public class ProceduralTerrain : MonoBehaviour
                 }
 
                 vertices[i] = new Vector3(x, finalHeight, z);
-                uvs[i] = new Vector2((float)x / width, (float)z / lenght);
-
+                uvs[i] = new Vector2(x * invWidth, z * invLength);
                 float heightPercentage;
-
 
                 if (generateWater && finalHeight <= seaLevel)
                 {
@@ -142,14 +145,18 @@ public class ProceduralTerrain : MonoBehaviour
                 }
 
                 colors[i] = heightColors.Evaluate(heightPercentage);
-
                 i++;
             }
         }
+        int targetTrisCount = width * length * 6;
+        if (triangles == null || triangles.Length != targetTrisCount)
+        {
+            triangles = new int[targetTrisCount];
+            GenerateTriangles();
+        }
 
-        GenerateTriangles();
         UpdateMesh();
-        GenerateWater();
+        UpdateWater();
         if (Application.isPlaying)
         {
             ScatterObjects();
@@ -158,12 +165,10 @@ public class ProceduralTerrain : MonoBehaviour
     }
     private void GenerateTriangles()
     {
-        triangles = new int[width * lenght * 6];
-
         int vert = 0; 
         int tris = 0; 
 
-        for (int z = 0; z < lenght; z++)
+        for (int z = 0; z < length; z++)
         {
             for (int x = 0; x < width; x++)
             {
@@ -204,7 +209,6 @@ public class ProceduralTerrain : MonoBehaviour
     private void UpdateMesh()
     {
         mesh.Clear();
-
         mesh.vertices = vertices;
         mesh.triangles = triangles;
         mesh.uv = uvs;
@@ -214,53 +218,55 @@ public class ProceduralTerrain : MonoBehaviour
         col.sharedMesh = mesh;
 
         mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-
-        if (generateWater == true)
-        {
-            waterPlane.gameObject.SetActive(true);
-            if (waterPlane != null)
-            {
-                waterPlane.localScale = new Vector3(width / 10f, 1f, lenght / 10f);
-                waterPlane.position = new Vector3(width / 2f, seaLevel, lenght / 2f);
-            }
-        }
-        else
-        {
-            waterPlane.gameObject.SetActive(false);
-        }
-        
+        mesh.RecalculateBounds();  
+    }
+    private struct PreparedScatterRule
+    {
+        public ScatterRule rule;
+        public float cosMaxSteepness;
     }
     private void ScatterObjects()
     {
-        if (scatterParent == null)
+        if (scatterParent != null)
         {
-            GameObject parentObj = new GameObject("Scattered Objects");
-            parentObj.transform.parent = this.transform;
-            scatterParent = parentObj.transform;
+            Destroy(scatterParent.gameObject);
         }
-        else
-        {
-            foreach (Transform child in scatterParent)
-            {
-                Destroy(child.gameObject);
-            }
-        }
-        System.Random prng = new System.Random(seed + 1);
+        GameObject parentObj = new GameObject("Scattered Objects");
+        parentObj.transform.parent = this.transform;
+        scatterParent = parentObj.transform;
         Vector3[] normals = mesh.normals;
+        System.Random prng = new System.Random(seed + 1);
+        int ruleCount = scatterRules.Length;
+        PreparedScatterRule[] preparedRules = new PreparedScatterRule[ruleCount];
+        for (int r = 0; r < ruleCount; r++)
+        {
+            preparedRules[r] = new PreparedScatterRule
+            {
+                rule = scatterRules[r],
+                cosMaxSteepness = Mathf.Cos(scatterRules[r].maxSteepness * Mathf.Deg2Rad)
+            };
+        }
         for (int i = 0; i < vertices.Length; i++)
         {
             Vector3 vertexPos = vertices[i];
-            float steepness = Vector3.Angle(Vector3.up, normals[i]);
-            foreach (ScatterRule rule in scatterRules)
+            Vector3 normal = normals[i];
+            float normalY = normal.y;
+            for (int r = 0; r < ruleCount; r++)
             {
+                PreparedScatterRule prep = preparedRules[r];
+                ScatterRule rule = prep.rule;
 
                 if (generateWater && !rule.allowUnderwater && vertexPos.y <= seaLevel)
                 {
                     continue;
                 }
 
-                if (vertexPos.y < rule.minHeight || vertexPos.y > rule.maxHeight || steepness > rule.maxSteepness)
+                if (vertexPos.y < rule.minHeight || vertexPos.y > rule.maxHeight)
+                {
+                    continue;
+                }
+
+                if (normalY < prep.cosMaxSteepness)
                 {
                     continue;
                 }
@@ -270,12 +276,12 @@ public class ProceduralTerrain : MonoBehaviour
                     float offsetX = (float)(prng.NextDouble() * 0.8 - 0.4);
                     float offsetZ = (float)(prng.NextDouble() * 0.8 - 0.4);
                     Vector3 spawnPos = new Vector3(vertexPos.x + offsetX, vertexPos.y, vertexPos.z + offsetZ);
-                    GameObject spawnedObj = Instantiate(rule.prefab, spawnPos, Quaternion.identity);
-                    spawnedObj.transform.parent = scatterParent;
+                    GameObject spawnedObj = Instantiate(rule.prefab, spawnPos, Quaternion.identity, scatterParent);
                     Quaternion randomYaw = Quaternion.Euler(0, (float)prng.NextDouble() * 360f, 0);
+
                     if (rule.alignToSurfaceNormal)
                     {
-                        Quaternion slopeAlignment = Quaternion.FromToRotation(Vector3.up, normals[i]);
+                        Quaternion slopeAlignment = Quaternion.FromToRotation(Vector3.up, normal);
                         spawnedObj.transform.rotation = slopeAlignment * randomYaw;
                     }
                     else
@@ -297,9 +303,9 @@ public class ProceduralTerrain : MonoBehaviour
         if (generateWater && !botSettings.canWalkUnderwater)
         {
             deepWaterBlocker = new GameObject("DeepWaterBlocker");
-            deepWaterBlocker.transform.position = new Vector3(width / 2f, seaLevel - 51f, lenght / 2f);
+            deepWaterBlocker.transform.position = new Vector3(width / 2f, seaLevel - 51f, length / 2f);
             BoxCollider box = deepWaterBlocker.AddComponent<BoxCollider>();
-            box.size = new Vector3(width + 50f, 100f, lenght + 50f);
+            box.size = new Vector3(width + 50f, 100f, length + 50f);
             NavMeshModifier mod = deepWaterBlocker.AddComponent<NavMeshModifier>();
             mod.overrideArea = true;
             mod.area = 1;
@@ -307,10 +313,9 @@ public class ProceduralTerrain : MonoBehaviour
         if (navMeshSurface == null) navMeshSurface = gameObject.AddComponent<NavMeshSurface>();
         navMeshSurface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
         navMeshSurface.BuildNavMesh();
-        if (deepWaterBlocker != null) Destroy(deepWaterBlocker);
+        if (deepWaterBlocker != null) DestroyImmediate(deepWaterBlocker);
 
         System.Random prng = new System.Random(seed + 2);
-        int currentSpawns = 0;
 
         for (int i = 0; i < botSettings.maxBots; i++)
         {
@@ -321,14 +326,14 @@ public class ProceduralTerrain : MonoBehaviour
                     int randomIndex = prng.Next(0, vertices.Length);
                     Vector3 testPos = vertices[randomIndex];
                     if (generateWater && !botSettings.canWalkUnderwater && testPos.y < seaLevel - 1f)
-                        continue;
-                    NavMeshHit hit;
-                    if (NavMesh.SamplePosition(testPos, out hit, 2.0f, NavMesh.AllAreas))
+                    {
+                    continue;
+                    }
+                    if (NavMesh.SamplePosition(testPos, out NavMeshHit hit, 2.0f, NavMesh.AllAreas))
                     {
                         GameObject spawnedBot = Instantiate(botPrefab, hit.position, Quaternion.identity, botParent);
 
-                        UnityEngine.AI.NavMeshAgent agent = spawnedBot.GetComponent<UnityEngine.AI.NavMeshAgent>();
-                        if (agent != null)
+                        if (spawnedBot.TryGetComponent<NavMeshAgent>(out var agent))
                         {
                             agent.speed = botSettings.speed;
                             agent.angularSpeed = botSettings.angularSpeed;
@@ -336,19 +341,30 @@ public class ProceduralTerrain : MonoBehaviour
                             agent.radius = botSettings.avoidanceRadius;
                         }
 
-                        BotWander wanderData = spawnedBot.GetComponent<BotWander>();
-                        if (wanderData != null) wanderData.wanderRadius = botSettings.wanderRadius;
+                        if (spawnedBot.TryGetComponent<BotWander>(out var wanderData))
+                        {
+                            wanderData.wanderRadius = botSettings.wanderRadius;
+                        }
 
-                        currentSpawns++;
                         break;
                     }
                 }
             }
         }
     }
-    private void GenerateWater()
+    private void UpdateWater()
     {
-        waterPlane.transform.localScale = new Vector3(width / 10f, 1f, lenght / 10f);
-        waterPlane.transform.position = new Vector3(width / 2f, seaLevel, lenght / 2f);
+        if (waterPlane == null) return;
+
+        if (generateWater)
+        {
+            waterPlane.gameObject.SetActive(true);
+            waterPlane.localScale = new Vector3(width / 10f, 1f, length / 10f);
+            waterPlane.position = new Vector3(width / 2f, seaLevel, length / 2f);
+        }
+        else
+        {
+            waterPlane.gameObject.SetActive(false);
+        }
     }
 }

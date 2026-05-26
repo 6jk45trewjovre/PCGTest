@@ -5418,7 +5418,7 @@ GameObject:
   - component: {fileID: 387469050}
   - component: {fileID: 387469051}
   m_Layer: 5
-  m_Name: LenghtScaleText
+  m_Name: LengthScaleText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -12988,10 +12988,10 @@ MonoBehaviour:
   m_FillRect: {fileID: 120850657}
   m_HandleRect: {fileID: 1895746710}
   m_Direction: 0
-  m_MinValue: 0
-  m_MaxValue: 100
+  m_MinValue: -10
+  m_MaxValue: 35
   m_WholeNumbers: 0
-  m_Value: 5
+  m_Value: 3
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -13736,7 +13736,7 @@ MonoBehaviour:
   m_FillRect: {fileID: 455314914}
   m_HandleRect: {fileID: 354820317}
   m_Direction: 0
-  m_MinValue: -5
+  m_MinValue: -10
   m_MaxValue: 25
   m_WholeNumbers: 0
   m_Value: 1
@@ -15754,7 +15754,7 @@ GameObject:
   - component: {fileID: 1324867469}
   - component: {fileID: 1324867468}
   m_Layer: 5
-  m_Name: LenghtSlider
+  m_Name: LengthSlider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -15827,7 +15827,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 605994215}
   m_Direction: 0
   m_MinValue: 10
-  m_MaxValue: 400
+  m_MaxValue: 255
   m_WholeNumbers: 1
   m_Value: 10
   m_OnValueChanged:
@@ -15860,7 +15860,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b992790a6cde12d488226bb3cd69f069, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AutoUIMapper
-  variableName: lenght
+  variableName: length
 --- !u!1 &1332165765
 GameObject:
   m_ObjectHideFlags: 0
@@ -17704,7 +17704,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ProceduralTerrain
   width: 200
-  lenght: 200
+  length: 200
   generateIslands: 1
   generateWater: 1
   waterPlane: {fileID: 2074244049}
@@ -20524,10 +20524,10 @@ MonoBehaviour:
   m_FillRect: {fileID: 626224205}
   m_HandleRect: {fileID: 839451172}
   m_Direction: 0
-  m_MinValue: 0
-  m_MaxValue: 100
+  m_MinValue: -10
+  m_MaxValue: 35
   m_WholeNumbers: 0
-  m_Value: 10
+  m_Value: 3
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -21293,7 +21293,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1277230174}
   m_Direction: 0
   m_MinValue: 10
-  m_MaxValue: 400
+  m_MaxValue: 255
   m_WholeNumbers: 1
   m_Value: 10
   m_OnValueChanged:
