@@ -297,58 +297,87 @@ public class ProceduralTerrain : MonoBehaviour
     {
         if (botParent != null) Destroy(botParent.gameObject);
         if (!botSettings.spawnBots || botPrefab == null) return;
+
         botParent = new GameObject("AI Bots").transform;
         botParent.transform.parent = this.transform;
+
         GameObject deepWaterBlocker = null;
         if (generateWater && !botSettings.canWalkUnderwater)
         {
             deepWaterBlocker = new GameObject("DeepWaterBlocker");
-            deepWaterBlocker.transform.position = new Vector3(width / 2f, seaLevel - 51f, length / 2f);
+            deepWaterBlocker.transform.position = transform.TransformPoint(new Vector3(width / 2f, seaLevel - 51f, length / 2f));
             BoxCollider box = deepWaterBlocker.AddComponent<BoxCollider>();
-            box.size = new Vector3(width + 50f, 100f, length + 50f);
+            box.size = Vector3.Scale(new Vector3(width + 50f, 100f, length + 50f), transform.lossyScale);
+
             NavMeshModifier mod = deepWaterBlocker.AddComponent<NavMeshModifier>();
             mod.overrideArea = true;
             mod.area = 1;
         }
+
         if (navMeshSurface == null) navMeshSurface = gameObject.AddComponent<NavMeshSurface>();
         navMeshSurface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
         navMeshSurface.BuildNavMesh();
+
         if (deepWaterBlocker != null) DestroyImmediate(deepWaterBlocker);
 
         System.Random prng = new System.Random(seed + 2);
+        System.Collections.Generic.List<Vector3> validSpawnPoints = new System.Collections.Generic.List<Vector3>(vertices.Length);
 
+        for (int j = 0; j < vertices.Length; j++)
+        {
+            Vector3 vertexPos = vertices[j];
+            if (generateWater && !botSettings.canWalkUnderwater && vertexPos.y < (seaLevel - 1f))
+            {
+                continue;
+            }
+            validSpawnPoints.Add(vertexPos);
+        }
+
+        if (validSpawnPoints.Count == 0)
+        {
+            if (botSettings.canWalkUnderwater || !generateWater)
+            {
+                validSpawnPoints.AddRange(vertices);
+            }
+        }
+
+        int targetBotCount = 0;
         for (int i = 0; i < botSettings.maxBots; i++)
         {
             if (prng.NextDouble() < botSettings.spawnChance)
             {
-                for (int attempt = 0; attempt < 5; attempt++)
+                targetBotCount++;
+            }
+        }
+
+        int spawnedBots = 0;
+        while (spawnedBots < targetBotCount && validSpawnPoints.Count > 0)
+        {
+            int lastIndex = validSpawnPoints.Count - 1;
+            int randomIndex = prng.Next(0, validSpawnPoints.Count);
+            Vector3 localTestPos = validSpawnPoints[randomIndex];
+            validSpawnPoints[randomIndex] = validSpawnPoints[lastIndex];
+            validSpawnPoints.RemoveAt(lastIndex);
+            Vector3 worldTestPos = transform.TransformPoint(localTestPos);
+
+            if (NavMesh.SamplePosition(worldTestPos, out NavMeshHit hit, 5.0f, NavMesh.AllAreas))
+            {
+                GameObject spawnedBot = Instantiate(botPrefab, hit.position, Quaternion.identity, botParent);
+
+                if (spawnedBot.TryGetComponent<NavMeshAgent>(out var agent))
                 {
-                    int randomIndex = prng.Next(0, vertices.Length);
-                    Vector3 testPos = vertices[randomIndex];
-                    if (generateWater && !botSettings.canWalkUnderwater && testPos.y < seaLevel - 1f)
-                    {
-                    continue;
-                    }
-                    if (NavMesh.SamplePosition(testPos, out NavMeshHit hit, 2.0f, NavMesh.AllAreas))
-                    {
-                        GameObject spawnedBot = Instantiate(botPrefab, hit.position, Quaternion.identity, botParent);
-
-                        if (spawnedBot.TryGetComponent<NavMeshAgent>(out var agent))
-                        {
-                            agent.speed = botSettings.speed;
-                            agent.angularSpeed = botSettings.angularSpeed;
-                            agent.acceleration = botSettings.acceleration;
-                            agent.radius = botSettings.avoidanceRadius;
-                        }
-
-                        if (spawnedBot.TryGetComponent<BotWander>(out var wanderData))
-                        {
-                            wanderData.wanderRadius = botSettings.wanderRadius;
-                        }
-
-                        break;
-                    }
+                    agent.speed = botSettings.speed;
+                    agent.angularSpeed = botSettings.angularSpeed;
+                    agent.acceleration = botSettings.acceleration;
+                    agent.radius = botSettings.avoidanceRadius;
                 }
+
+                if (spawnedBot.TryGetComponent<BotWander>(out var wanderData))
+                {
+                    wanderData.wanderRadius = botSettings.wanderRadius;
+                }
+
+                spawnedBots++;
             }
         }
     }
