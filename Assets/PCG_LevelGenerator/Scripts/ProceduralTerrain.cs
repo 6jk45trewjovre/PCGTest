@@ -43,7 +43,7 @@ public class ProceduralTerrain : MonoBehaviour
     [Range(0f, 1f)] public float archipelagoClustering = 0.5f;
     public float maxOceanDepth = 10f;
     public Gradient heightColors;
-    private Color[] colors; 
+    private Color[] colors;
     public float noiseScale = 10f;
     public float altitudeMultiplier = 10f;
     public AnimationCurve heightCurve;
@@ -57,7 +57,7 @@ public class ProceduralTerrain : MonoBehaviour
     public int seed = 42;
     public Vector2 offset;
     public ScatterRule[] scatterRules;
-    private Transform scatterParent; 
+    private Transform scatterParent;
     private Mesh mesh;
     private Vector3[] vertices;
     private int[] triangles;
@@ -65,12 +65,16 @@ public class ProceduralTerrain : MonoBehaviour
 
     void Start()
     {
-        mesh = new Mesh();
-        GetComponent<MeshFilter>().mesh = mesh;
-        mesh.name = "Procedural Terrain";
+        if (mesh == null)
+        {
+            mesh = new Mesh();
+            mesh.name = "Procedural Terrain";
+            GetComponent<MeshFilter>().mesh = mesh;
+        }
 
         GenerateTerrain();
     }
+
     public void GenerateTerrain()
     {
         int vertexCount = (width + 1) * (length + 1);
@@ -80,10 +84,6 @@ public class ProceduralTerrain : MonoBehaviour
             uvs = new Vector2[vertexCount];
             colors = new Color[vertexCount];
         }
-
-        vertices = new Vector3[(width + 1) * (length + 1)];
-        uvs = new Vector2[(width + 1) * (length + 1)]; 
-        colors = new Color[(width + 1) * (length + 1)]; 
 
         System.Random prng = new System.Random(seed);
         float offsetX = prng.Next(-100000, 100000) + offset.x;
@@ -111,7 +111,7 @@ public class ProceduralTerrain : MonoBehaviour
                         float sampleX = (x + offsetX) / noiseScale;
                         float sampleZ = (z + offsetZ) / noiseScale;
                         float rawNoise = GetFractalNoise(sampleX, sampleZ, octaves, persistence, lacunarity);
-                        float terrainHeight = heightCurve.Evaluate(rawNoise) * altitudeMultiplier;
+                        float terrainHeight = (heightCurve != null ? heightCurve.Evaluate(rawNoise) : rawNoise) * altitudeMultiplier;
                         float beachEase = Mathf.Clamp01(shoreDistance * 4f);
                         finalHeight = terrainHeight * beachEase;
                     }
@@ -122,11 +122,10 @@ public class ProceduralTerrain : MonoBehaviour
                 }
                 else
                 {
-
                     float sampleX = (x + offsetX) / noiseScale;
                     float sampleZ = (z + offsetZ) / noiseScale;
                     float rawNoise = GetFractalNoise(sampleX, sampleZ, octaves, persistence, lacunarity);
-                    finalHeight = heightCurve.Evaluate(rawNoise) * altitudeMultiplier;
+                    finalHeight = (heightCurve != null ? heightCurve.Evaluate(rawNoise) : rawNoise) * altitudeMultiplier;
                 }
 
                 vertices[i] = new Vector3(x, finalHeight, z);
@@ -140,11 +139,12 @@ public class ProceduralTerrain : MonoBehaviour
                 else
                 {
                     float minHeight = generateWater ? seaLevel : 0f;
-                    float validMaxHeight = Mathf.Max(seaLevel + 0.1f, altitudeMultiplier);
+                    float effectiveSeaLevelForMath = generateWater ? seaLevel : 0f;
+                    float validMaxHeight = Mathf.Max(effectiveSeaLevelForMath + 0.1f, altitudeMultiplier);
                     heightPercentage = Mathf.InverseLerp(minHeight, validMaxHeight, finalHeight);
                 }
 
-                colors[i] = heightColors.Evaluate(heightPercentage);
+                colors[i] = heightColors != null ? heightColors.Evaluate(heightPercentage) : Color.white;
                 i++;
             }
         }
@@ -163,10 +163,11 @@ public class ProceduralTerrain : MonoBehaviour
             BuildAIAndSpawn();
         }
     }
+
     private void GenerateTriangles()
     {
-        int vert = 0; 
-        int tris = 0; 
+        int vert = 0;
+        int tris = 0;
 
         for (int z = 0; z < length; z++)
         {
@@ -185,12 +186,16 @@ public class ProceduralTerrain : MonoBehaviour
             vert++;
         }
     }
+
     private float GetNoise(float x, float z)
     {
         return Mathf.PerlinNoise(x, z);
     }
-    private float GetFractalNoise(float x, float z, int octaves, float persistence, float lacunarity)
+
+    public float GetFractalNoise(float x, float z, int octaves, float persistence, float lacunarity)
     {
+        if (octaves <= 0) return 0f;
+
         float total = 0f;
         float frequency = 1f;
         float amplitude = 1f;
@@ -204,10 +209,23 @@ public class ProceduralTerrain : MonoBehaviour
             amplitude *= persistence;
         }
 
+        if (maxAmplitude == 0f) return 0f;
+
         return total / maxAmplitude;
     }
+
     private void UpdateMesh()
     {
+        if (mesh == null)
+        {
+            mesh = new Mesh();
+            mesh.name = "Procedural Terrain";
+            if (TryGetComponent<MeshFilter>(out var filter))
+            {
+                filter.sharedMesh = mesh;
+            }
+        }
+
         mesh.Clear();
         mesh.vertices = vertices;
         mesh.triangles = triangles;
@@ -218,15 +236,19 @@ public class ProceduralTerrain : MonoBehaviour
         col.sharedMesh = mesh;
 
         mesh.RecalculateNormals();
-        mesh.RecalculateBounds();  
+        mesh.RecalculateBounds();
     }
+
     private struct PreparedScatterRule
     {
         public ScatterRule rule;
         public float cosMaxSteepness;
     }
+
     private void ScatterObjects()
     {
+        if (scatterRules == null || scatterRules.Length == 0) return;
+
         if (scatterParent != null)
         {
             Destroy(scatterParent.gameObject);
@@ -293,10 +315,12 @@ public class ProceduralTerrain : MonoBehaviour
             }
         }
     }
+
     private void BuildAIAndSpawn()
     {
         if (botParent != null) Destroy(botParent.gameObject);
-        if (!botSettings.spawnBots || botPrefab == null) return;
+
+        if (botSettings == null || !botSettings.spawnBots || botPrefab == null) return;
 
         botParent = new GameObject("AI Bots").transform;
         botParent.transform.parent = this.transform;
@@ -381,6 +405,7 @@ public class ProceduralTerrain : MonoBehaviour
             }
         }
     }
+
     private void UpdateWater()
     {
         if (waterPlane == null) return;

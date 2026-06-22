@@ -4975,7 +4975,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 26.56, z: -10}
+  m_LocalPosition: {x: 100, y: 30, z: -50}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7266,25 +7266,25 @@ MonoBehaviour:
   terrainGenerator: {fileID: 1504066086}
   generateButton: {fileID: 806494028}
   biomePresets:
-  - presetName: 1
+  - presetName: "\u0420\u0430\u0432\u043D\u0438\u043D\u044B"
     curve:
       serializedVersion: 2
       m_Curve:
       - serializedVersion: 3
         time: 0
         value: 0
-        inSlope: 0
-        outSlope: 0
-        tangentMode: 0
+        inSlope: 1
+        outSlope: 1
+        tangentMode: 34
         weightedMode: 0
         inWeight: 0
         outWeight: 0
       - serializedVersion: 3
         time: 1
         value: 1
-        inSlope: 2
-        outSlope: 2
-        tangentMode: 0
+        inSlope: 1
+        outSlope: 1
+        tangentMode: 34
         weightedMode: 0
         inWeight: 0
         outWeight: 0
@@ -7294,15 +7294,15 @@ MonoBehaviour:
     sandPercent: 0.2
     grassPercent: 0.4
     rockPercent: 0.4
-  - presetName: 2
+  - presetName: "\u0423\u0442\u0435\u0441\u044B"
     curve:
       serializedVersion: 2
       m_Curve:
       - serializedVersion: 3
         time: 0
         value: 0
-        inSlope: 2
-        outSlope: 2
+        inSlope: 0
+        outSlope: 0
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -7310,8 +7310,8 @@ MonoBehaviour:
       - serializedVersion: 3
         time: 1
         value: 1
-        inSlope: 0
-        outSlope: 0
+        inSlope: 2
+        outSlope: 2
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -7322,15 +7322,15 @@ MonoBehaviour:
     sandPercent: 0.4
     grassPercent: 0.2
     rockPercent: 0.4
-  - presetName: 3
+  - presetName: "\u0421\u043A\u0430\u043B\u044B"
     curve:
       serializedVersion: 2
       m_Curve:
       - serializedVersion: 3
         time: 0
         value: 0
-        inSlope: 0
-        outSlope: 0
+        inSlope: 2
+        outSlope: 2
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -7350,6 +7350,34 @@ MonoBehaviour:
     sandPercent: 0.4
     grassPercent: 0.4
     rockPercent: 0.2
+  - presetName: "\u0425\u043E\u043B\u043C\u044B"
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    sandPercent: 0.35
+    grassPercent: 0.35
+    rockPercent: 0.3
   ui:
     seedInputField: {fileID: 1134331403}
     biomeDropdown: {fileID: 99041114}
@@ -17751,18 +17779,18 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 0
       value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
+      inSlope: 1
+      outSlope: 1
+      tangentMode: 34
       weightedMode: 0
       inWeight: 0
       outWeight: 0
     - serializedVersion: 3
       time: 1
       value: 1
-      inSlope: 2
-      outSlope: 2
-      tangentMode: 0
+      inSlope: 1
+      outSlope: 1
+      tangentMode: 34
       weightedMode: 0
       inWeight: 0
       outWeight: 0
@@ -17786,22 +17814,22 @@ MonoBehaviour:
   seed: 0
   offset: {x: 0, y: 0}
   scatterRules:
-  - ruleName: trees
+  - ruleName: "\u0414\u0435\u0440\u0435\u0432\u044C\u044F"
     prefab: {fileID: 8115868842466991790, guid: 0a9b408da5031c34193d0b7cfb948b6c, type: 3}
     allowUnderwater: 0
     alignToSurfaceNormal: 0
     spawnProbability: 0.05
     minHeight: 3
-    maxHeight: 7
-    maxSteepness: 30
-  - ruleName: rocks
+    maxHeight: 10
+    maxSteepness: 10
+  - ruleName: "\u041A\u0430\u043C\u043D\u0438"
     prefab: {fileID: 1835239851689654017, guid: 756607d10ea723942ba305cbc83242cd, type: 3}
     allowUnderwater: 0
     alignToSurfaceNormal: 1
     spawnProbability: 0.1
-    minHeight: 5
+    minHeight: 1
     maxHeight: 10
-    maxSteepness: 50
+    maxSteepness: 40
 --- !u!1 &1505884666
 GameObject:
   m_ObjectHideFlags: 0
